@@ -2,33 +2,46 @@ package com.scottmcclellan.lockereatsapp;
 
 import android.app.ListActivity;
 import android.content.Intent;
-import android.support.v7.app.AppCompatActivity;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import java.util.List;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.net.HttpURLConnection;
+import java.net.URL;
+
 
 public class MenuView extends ListActivity {
 
     private Button sendOrder;
-    String[] menuList = {"Item A", "Item B", "Item C", "Item D", "Item E", "Item F", "Item G", "Item H"};
+    //private Product[] menuList;
+    private static final String LockerEatsProductAPI = "http://agglo.mooo.com:3000/api/v1/products";
+    private static final String LockerEatsOrderAPI = "http://agglo.mooo.com:3000/api/v1/orders";
+    //private static final String LockerEatsProductAPI = "http://192.168.1.13:3000/api/v1/products";
+    //private static final String LockerEatsOrderAPI = "http://192.168.1.13:3000/api/v1/orders";
+    protected ArrayAdapter<Product> myAdapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_menu_view);
+        myAdapter = new ArrayAdapter<Product>(this, android.R.layout.simple_list_item_1);
+        (new ProductDownloader()).execute();
 
-        ArrayAdapter<String> myAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, menuList);
-        ListView myList = (ListView) findViewById(android.R.id.list);
-        myList.setAdapter(myAdapter);
 
         sendOrder = (Button) findViewById(R.id.sendOrder);
 
@@ -36,54 +49,24 @@ public class MenuView extends ListActivity {
             @Override
             public void onClick(View v) {
                 Toast.makeText(MenuView.this, "Your order has been sent!", Toast.LENGTH_SHORT).show();
+                (new OrderSubmitter()).execute(MainActivity.order);
                 startActivity(new Intent(MenuView.this, MainActivity.class));
             }
         });
     }
 
+
     protected void onListItemClick(ListView parent, View v, int position, long id) {
         super.onListItemClick(parent, v, position, id);
         int set = 0;
-        if (((TextView)v).getText().toString() != "selected") {
-            ((TextView)v).setText("selected");
-            set = 1;
-        }
-        if (((TextView)v).getText().toString() == "selected" && set == 0) {
-            ((TextView)v).setText(menuList[position]);
-            MainActivity.order.removeItem(menuList[position]);
-            Toast.makeText(MenuView.this, menuList[position] + " has been removed from your order.", Toast.LENGTH_SHORT).show();
-        }
-        else if (position == 0) {
-            MainActivity.order.setRestaurant(menuList[position]);
-            Toast.makeText(MenuView.this, menuList[position] + " has been added to your order.", Toast.LENGTH_SHORT).show();
-        }
-        else if (position == 1) {
-            MainActivity.order.setRestaurant(menuList[position]);
-            Toast.makeText(MenuView.this, menuList[position] + " has been added to your order.", Toast.LENGTH_SHORT).show();
-        }
-        else if (position == 2) {
-            MainActivity.order.setRestaurant(menuList[position]);
-            Toast.makeText(MenuView.this, menuList[position] + " has been added to your order.", Toast.LENGTH_SHORT).show();
-        }
-        else if (position == 3) {
-            MainActivity.order.setRestaurant(menuList[position]);
-            Toast.makeText(MenuView.this, menuList[position] + " has been added to your order.", Toast.LENGTH_SHORT).show();
-        }
-        else if (position == 4) {
-            MainActivity.order.setRestaurant(menuList[position]);
-            Toast.makeText(MenuView.this, menuList[position] + " has been added to your order.", Toast.LENGTH_SHORT).show();
-        }
-        else if (position == 5) {
-            MainActivity.order.setRestaurant(menuList[position]);
-            Toast.makeText(MenuView.this, menuList[position] + " has been added to your order.", Toast.LENGTH_SHORT).show();
-        }
-        else if (position == 6) {
-            MainActivity.order.setRestaurant(menuList[position]);
-            Toast.makeText(MenuView.this, menuList[position] + " has been added to your order.", Toast.LENGTH_SHORT).show();
-        }
-        else if (position == 7) {
-            MainActivity.order.setRestaurant(menuList[position]);
-            Toast.makeText(MenuView.this, menuList[position] + " has been added to your order.", Toast.LENGTH_SHORT).show();
+        if (MainActivity.order.items.contains(myAdapter.getItem(position))) {
+            ((TextView) v).setText(myAdapter.getItem(position).toString());
+            MainActivity.order.removeItem(myAdapter.getItem(position));
+            Toast.makeText(MenuView.this, myAdapter.getItem(position) + " has been removed from your order.", Toast.LENGTH_SHORT).show();
+        } else {
+            ((TextView) v).setText(((TextView) v).getText().toString() + "(selected)");
+            Toast.makeText(MenuView.this, myAdapter.getItem(position) + " has been added to your order.", Toast.LENGTH_SHORT).show();
+            MainActivity.order.addItem(myAdapter.getItem(position));
         }
     }
 
@@ -108,4 +91,115 @@ public class MenuView extends ListActivity {
 
         return super.onOptionsItemSelected(item);
     }
+
+    private class OrderSubmitter extends AsyncTask<Order, Void, Void> {
+
+        @Override
+        protected Void doInBackground(Order... params) {
+
+            Order order = params[0];
+            JSONObject jsonOrder = new JSONObject();
+            try {
+
+
+                jsonOrder.put("restaurant", order.getRestaurant());
+                jsonOrder.put("customer", order.getEmail());
+
+                JSONArray productArray = new JSONArray();
+                for (Product p : order.items) {
+                    JSONObject products = new JSONObject();
+                    products.put("id", p.getId());
+                    productArray.put(products);
+                }
+                jsonOrder.put("products", productArray);
+
+                URL url = new URL(LockerEatsOrderAPI);
+                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+                connection.setDoOutput(true);
+                connection.setRequestMethod("POST");
+                connection.setRequestProperty("Content-Type", "application/json");
+
+                OutputStream os = connection.getOutputStream();
+
+                os.write(jsonOrder.toString().getBytes());
+                os.flush();
+
+                if (connection.getResponseCode() != HttpURLConnection.HTTP_CREATED) {
+                    throw new RuntimeException("Failed : HTTP error code : "
+                            + connection.getResponseCode());
+                }
+
+                BufferedReader br = new BufferedReader(new InputStreamReader(
+                        (connection.getInputStream())));
+
+                String output;
+                System.out.println("Output from Server .... \n");
+                while ((output = br.readLine()) != null) {
+                    System.out.println(output);
+                }
+
+                connection.disconnect();
+
+
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            System.out.println(jsonOrder.toString());
+
+
+
+
+
+
+            return null;
+        }
+    }
+
+
+
+    private class ProductDownloader extends AsyncTask<String, Void, String> {
+        @Override
+        protected String doInBackground(String... params) {
+            try {
+                URL url = new URL(LockerEatsProductAPI);
+                HttpURLConnection connection =
+                        (HttpURLConnection) url.openConnection();
+
+                //connection.addRequestProperty("x-api-key", context.getString(R.string.open_weather_maps_app_id));
+
+                BufferedReader reader = new BufferedReader(
+                        new InputStreamReader(connection.getInputStream()));
+
+                StringBuffer json = new StringBuffer(1024);
+                String tmp = "";
+                while ((tmp = reader.readLine()) != null)
+                    json.append(tmp).append("\n");
+                reader.close();
+
+                //JSONObject data = new JSONObject(json.toString());
+                JSONArray products = new JSONArray(json.toString());
+
+                for (int i = 0; i < products.length(); i++) {
+                    JSONObject e = products.getJSONObject(i);
+                   myAdapter.add(new Product(e.getInt("id"), e.getString("name"), e.getDouble("price")));
+                }
+
+
+
+                // This value will be 404 if the request was not
+                // successful
+
+            } catch (Exception e) {
+                System.err.println(e);
+            }
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(String s) {
+            ListView myList = (ListView) findViewById(android.R.id.list);
+            myList.setAdapter(myAdapter);
+        }
+    }
+
 }

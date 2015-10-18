@@ -30,13 +30,14 @@ public class MainActivity extends AppCompatActivity {
         login = (Button) findViewById(R.id.loginButtonId);
         order = new Order();
 
-        order.setEmail(email.getText().toString());
-        order.setPassword(pass.getText().toString());
+
 
         login.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View v) {
                 Intent Intent = new Intent(MainActivity.this, RestaurantView.class);
+                order.setEmail(email.getText().toString());
+                order.setPassword(pass.getText().toString());
                 startActivity(Intent);
             }
         });

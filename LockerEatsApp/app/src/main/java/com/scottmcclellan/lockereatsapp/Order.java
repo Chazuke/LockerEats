@@ -11,7 +11,7 @@ public class Order {
     String email;
     String password;
     String restaurant;
-    ArrayList<String> items = new ArrayList<String>();
+    ArrayList<Product> items = new ArrayList<>();
     int index = 0;
 
     public void setEmail(String email) {
@@ -36,16 +36,16 @@ public class Order {
         this.restaurant = restaurant;
     }
 
-    public String getRestaurant(String restaurant) {
+    public String getRestaurant() {
         return this.restaurant;
     }
 
-    public void addItem(String item) {
+    public void addItem(Product item) {
         items.add(item);
         return;
     }
 
-    public void removeItem(String item) {
+    public void removeItem(Product item) {
         items.remove(item);
         return;
     }
