@@ -13,6 +13,8 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.android.gms.iid.InstanceID;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -50,7 +52,10 @@ public class MenuView extends ListActivity {
             public void onClick(View v) {
                 Toast.makeText(MenuView.this, "Your order has been sent!", Toast.LENGTH_SHORT).show();
                 (new OrderSubmitter()).execute(MainActivity.order);
-                startActivity(new Intent(MenuView.this, MainActivity.class));
+
+                Intent orderView = new Intent(MenuView.this, OrderView.class);
+                startActivity(orderView);
+                //startActivity(new Intent(MenuView.this, MainActivity.class));
             }
         });
     }
@@ -104,6 +109,7 @@ public class MenuView extends ListActivity {
 
                 jsonOrder.put("restaurant", order.getRestaurant());
                 jsonOrder.put("customer", order.getEmail());
+                jsonOrder.put("gcmToken", MainActivity.order.getGcmRegistrationId());
 
                 JSONArray productArray = new JSONArray();
                 for (Product p : order.items) {
@@ -132,11 +138,16 @@ public class MenuView extends ListActivity {
                 BufferedReader br = new BufferedReader(new InputStreamReader(
                         (connection.getInputStream())));
 
-                String output;
+                String output, res;
+                res = new String();
                 System.out.println("Output from Server .... \n");
                 while ((output = br.readLine()) != null) {
                     System.out.println(output);
+                    res += output;
                 }
+
+                JSONObject result = new JSONObject(res);
+                MainActivity.order.setOrderId(result.getInt("id"));
 
                 connection.disconnect();
 

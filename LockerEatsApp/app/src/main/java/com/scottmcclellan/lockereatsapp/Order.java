@@ -11,8 +11,26 @@ public class Order {
     String email;
     String password;
     String restaurant;
+    int orderId;
+    String GcmRegistrationId;
     ArrayList<Product> items = new ArrayList<>();
     int index = 0;
+
+    public int getOrderId() {
+        return orderId;
+    }
+
+    public void setOrderId(int orderId) {
+        this.orderId = orderId;
+    }
+
+    public String getGcmRegistrationId() {
+        return GcmRegistrationId;
+    }
+
+    public void setGcmRegistrationId(String gcmRegistrationId) {
+        GcmRegistrationId = gcmRegistrationId;
+    }
 
     public void setEmail(String email) {
         this.email = email;

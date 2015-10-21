@@ -5,4 +5,6 @@
     <string name="action_settings">Settings</string>
     <string name="title_activity_restaurant_view">RestaurantView</string>
     <string name="title_activity_menu_view">MenuView</string>
+    <string name="gcm_defaultSenderId">889537249065</string>
+    <string name="title_activity_order_view">OrderView</string>
 </resources>
