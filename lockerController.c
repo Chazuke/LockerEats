@@ -7,6 +7,9 @@
 #define	BUFF_SIZ 2048	/* size of a buffer for a connection */
 #define QUEUE_SIZ 10
 
+#define h_addr h_addr_list[0]
+
+
 int lockerQueue[QUEUE_SIZ];
 int head = 0;
 int tail = 0;
@@ -235,19 +238,100 @@ int sendNotification(int orderNum) {
 	return 0;
 }
 
+void updateServer(int orderNum) {
+	CURL *curl;
+	CURLcode res;
+	char json[200];
+	struct curl_slist *headers=NULL;
+	
+	char url[50];
+	snprintf(url, sizeof(url), "http://agglo.mooo.com:3000/api/v1/orders/%i", orderNum);
+	
+	curl = curl_easy_init();
+	
+	if(curl) {
+	//headers = curl_slist_append(headers, client_id_header);
+    headers = curl_slist_append(headers, "Content-Type: application/json");
+
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers); 
+    /* First set the URL that is about to receive our POST. This URL can
+       just as well be a https:// URL if that is what should receive the
+       data. */
+    curl_easy_setopt(curl, CURLOPT_URL, url);
+    /* Specify the user/pass */
+    //curl_easy_setopt(curl,CURLOPT_USERPWD,"apikey:secretkey");
+    
+	snprintf(json, sizeof(json), "{\"extQr\":\"ORDER?%i\"}", orderNum);
+	
+	printf("JSONSTRING: %s", &json);
+	
+	 curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PUT");	
+	
+    /* Now specify the POST data */
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, json);
+    
+    /* For HTTPS */
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+
+	curl_easy_setopt(curl, CURLOPT_NOBODY, 1);
+    /* Perform the request, res will get the return code */
+    res = curl_easy_perform(curl);
+	
+    printf("\nResult of Operation: %d\n", res);
+
+    /* always cleanup */
+    curl_easy_cleanup(curl);
+  }
+}
+
+int getProcByName(const char* procName) {
+	int pid = -1;
+	DIR *dp = opendir("/proc");	
+	if (dp != NULL) {
+		struct dirent *dirp;
+		int nr = 1;
+		FILE *fp;
+		char filename[25];
+		char procCmdLine[100];
+		while (pid < 0 && (dirp = readdir(dp))) {
+			int id = atoi(dirp->d_name);
+            if (id > 0) {				
+				snprintf(filename, sizeof filename, "/proc/%i/cmdline", id);
+				fp = fopen(filename,"r");
+				fgets(procCmdLine, sizeof(procCmdLine), fp); 
+				fclose(fp);
+				if(strncmp(procName, procCmdLine, strlen(procName)) == 0) {
+					pid = id;
+				}
+			}
+		}
+	}	
+	return pid;
+}
+
 //Contains the while loop to take pictures and scan for QR codes
 int main() {
 	FILE* file;
 	int numLockers;
 	int orderNum;
 	int err;
+	pid_t raspistillProcessId;
 	char* QRstring;
 	char* qmark;
 	char* isAdmin;
 	char* isOrder;
-	char* webcam = "fswebcam --no-banner -r 400x400 -q /home/pi/qrcode/input.jpg";
-	char* zbar = "zbarimg /home/pi/qrcode/input.jpg > /home/pi/qrcode/input.txt";
+	//char* webcam = "raspistill -t 1 -w 400 -h 300 -o /home/pi/qrcode/image.jpg";
+	char* zbar = "zbarimg -q /home/pi/qrcode/image.jpg > /home/pi/qrcode/input.txt";
 
+	// Start Raspistill or get U
+	if((raspistillProcessId = getProcByName("raspistill")) == -1) {
+		system("raspistill -t 0 -s -w 400 -h 300 -o /home/pi/qrcode/image.jpg &");
+		//printf("have to kill it\n");
+		//kill(raspistillProcessId, SIGKILL);
+	}
+	
+	//raspistillProcessId = getProcByName("raspistill");
+	printf("ProcId:\t%i\n",raspistillProcessId);
 	printf("How many lockers are attached?\n");
 	scanf("%d", &numLockers);
 
@@ -268,11 +352,13 @@ int main() {
 		QRstring = malloc(1024*sizeof(char));
 
 		//take a picture and attempt to decode a QR image
-		system(webcam);
+		system("date");
+		kill(raspistillProcessId, SIGUSR1);
+		//sleep(1);
 		system(zbar);
 
 		//read the string from the text file
-		file = fopen("input.txt", "r");
+		file = fopen("/home/pi/qrcode/input.txt", "r");
 		fgets(QRstring, 1024, (FILE*)file);
 		
 		//if there was nothing in the file, skip this and take another picture
