@@ -158,7 +158,6 @@ void updateServer(int orderNum) {
     /* For HTTPS */
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
 
-	curl_easy_setopt(curl, CURLOPT_NOBODY, 1);
     /* Perform the request, res will get the return code */
     res = curl_easy_perform(curl);
 	
@@ -205,6 +204,7 @@ int main() {
 	char* qmark;
 	char* isAdmin;
 	char* isOrder;
+	int check = 0;
 	//char* webcam = "raspistill -t 1 -w 400 -h 300 -o /home/pi/qrcode/image.jpg";
 	char* zbar = "zbarimg -q /home/pi/qrcode/image.jpg > /home/pi/qrcode/input.txt";
 
@@ -230,7 +230,7 @@ int main() {
 	
 
 	//make sure the pins on the Pi are ready for use
-	initializePins();
+	initialize(lockerList, numLockers);
 
 	while (1) {
 		//must malloc new string to erase old one
@@ -238,7 +238,11 @@ int main() {
 
 		//take a picture and attempt to decode a QR image
 		system("date");
-		kill(raspistillProcessId, SIGUSR1);
+		if (raspistillProcessId != -1) kill(raspistillProcessId, SIGUSR1);
+		if (check == 1) {
+			check = 0;
+			sleep(3);
+		}
 		system(zbar);
 
 		//read the string from the text file
@@ -249,6 +253,7 @@ int main() {
 		//if zbar detected a QR code, the line "QR-Code:" followed by the decoded string
 		//would be in the text file
 		if (strstr(QRstring, "QR-Code:") != NULL) {
+			check = 1;
 			//check for ADMIN code
 			isAdmin = strstr(QRstring, "ADMIN");
 			//check for ORDER code
