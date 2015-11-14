@@ -21,6 +21,7 @@ typedef struct Locker{
 	time_t timer;
 	int orderNum;
 	int isFree;
+	int pin;
 } Locker;
 
 void openLocker(int orderNum, int numLockers, struct Locker lockerList[]);

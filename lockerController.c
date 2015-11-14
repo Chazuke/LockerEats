@@ -54,7 +54,7 @@ void assignLocker(int orderNum, int numLockers, struct Locker lockerList[]) {
 	//opens this locker
 	popLock(lockerList, index);
 	//sends message to server
-	//sendNotification(orderNum);~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	updateServer(orderNum);
 	//starts locker timer
 	lockerList[index].timer = time(NULL);
 	return;
@@ -88,156 +88,41 @@ int getFreeLocker(struct Locker lockerList[], int numLockers) {
 }
 
 //Initliaize GPIO pins using wiringPi
-void initializePins() {
-	//wiringPiSetup();
-	//pinMode(pin number, OUTPUT/INPUT);
+void initialize(struct Locker lockerList[], int numLockers) {
+	wiringPiSetupGpio();
+	int pins[4];
+	pins[0] = 4;
+	pins[1] = 17;
+	pins[2] = 27;
+	pins[3] = 22;
+	pinMode(pins[0], OUTPUT);
+	pinMode(pins[1], OUTPUT);
+	pinMode(pins[2], OUTPUT);
+	pinMode(pins[3], OUTPUT);
+	digitalWrite(pins[0], HIGH);
+	digitalWrite(pins[1], HIGH);
+	digitalWrite(pins[2], HIGH);
+	digitalWrite(pins[3], HIGH);
+
+	for (int i = 0; i < numLockers; i++) {
+		lockerList[i].orderNum = 0;
+		lockerList[i].isFree = 0;
+		lockerList[i].pin = pins[i];
+	}
+
 	return;
 }
 
 //Actuates the lock associated with the given locker
 void popLock(struct Locker lockerList[], int index) {
-	//digitalWrite(pin set in initializePin(), HIGH/LOW);
-	//delay(in ms);
+	printf("Opened Locker!\n");
+	digitalWrite(lockerList[index].pin, LOW);
+	delay(2000);
+	digitalWrite(lockerList[index].pin, HIGH);
 	return;
 }
 
 //Sends an order number to the server to notify customer that order is ready
-int sendNotification(int orderNum) {
-
-	int	i;								 /* loop index */
-	int	n;								 /* number of chars read */
-	char *user, *pass, *svc;			 /* given by command line args */
-	char host[] = "xinu00.cs.purdue.edu";/* location of server */
-	char buffer[100];					 /* I/O buffer */
-	int	len;							 /* string length temporaries */
-
-	struct cmd *pcmd;					 /* ptr to a registration command */
-
-	struct hostent *phe;				 /* pointer to host info. entry */
-	struct protoent *ppe;				 /* ptr. to protocol info. entry	*/
-	struct sockaddr_in socin;			 /* an IPv4 endpoint address	*/
-	int	addrlen;						 /* len of a sockaddr_in struct */
-
-	int	sock;							 /* descriptor for socket */
-
-	char* prompt;					 /* prompt to send */
-
-	char replybuf[BUFF_SIZ + sizeof(prompt)];	/* reply buffer	*/
-
-	/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ set args ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-
-	user = "smcclel";
-	pass = "lockereats";
-	svc = "lockereats";
-
-	/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-
-	/* Open socket used to connect to inflection server */
-
-	memset(&socin, 0, sizeof(socin));
-	socin.sin_family = AF_INET;
-
-	/* Map host name to IP address or map dotted decimal */
-
-	if (phe = gethostbyname(host)) {
-		memcpy(&socin.sin_addr, phe->h_addr, phe->h_length);
-	}
-	else if ((socin.sin_addr.s_addr = inet_addr(host)) == INADDR_NONE) {
-		fprintf(stderr, "can't get host entry for %s\n", host);
-		return -1;
-	}
-
-	socin.sin_port = htons((unsigned short)TCPPORT);
-	ppe = getprotobyname("tcp");
-
-	/* Create the socket */
-
-	sock = socket(PF_INET, SOCK_STREAM, ppe->p_proto);
-	if (sock < 0) {
-		fprintf(stderr, "cannot create socket\n");
-		return -1;
-	}
-
-	/* Connect the socket */
-
-	if (connect(sock, (struct sockaddr *)&socin, sizeof(socin)) < 0) {
-		fprintf(stderr, "can't connect to port %d\n", TCPPORT);
-		return -1;
-	}
-
-	/* Form an access command and send */
-
-	pcmd = (struct cmd *) buffer;
-	pcmd->cmdtype = CMD_ACCESS;
-
-	/* Add user ID */
-
-	len = strlen(user);
-	memset(pcmd->cid, ' ', UID_SIZ);
-	memcpy(pcmd->cid, user, len);
-
-	pcmd->cslash1 = '/';
-
-	/* Add password */
-
-	len = strlen(pass);
-	memset(pcmd->cpass, ' ', PASS_SIZ);
-	memcpy(pcmd->cpass, pass, len);
-
-	pcmd->cslash2 = '/';
-
-	/* Add service */
-
-	len = strlen(svc);
-	memset(pcmd->csvc, ' ', SVC_SIZ);
-	memcpy(pcmd->csvc, svc, len);
-
-	pcmd->dollar = '$';
-
-	/* Send registration message */
-
-	send(sock, buffer, sizeof(struct cmd), 0);
-
-	/* Prompt for the prompt */
-
-	len = 0;
-	sprintf(prompt, "%d", orderNum);
-
-	write(sock, prompt, strlen(prompt));
-
-	fprintf(stderr, "\nsent the following prompt: %s\n", prompt);
-
-	/* Read the reply from the service app */
-
-	n = read(sock, replybuf, sizeof(replybuf));
-
-	if (n < 0) {
-		fprintf(stderr, "error reading from the socket\n");
-		return -1;
-	}
-	else if (n == 0) {
-		fprintf(stderr, "\nTCP connection was closed before a reply arrived.\n");
-		return 1;
-	}
-
-	/* Data arrived -- print it */
-
-	replybuf[n] = '\0';
-	printf("\nData arrived: %s\n", replybuf);
-
-	n = read(sock, replybuf, sizeof(replybuf));
-	if (n < 0) {
-		fprintf(stderr, "error reading from the socket\n");
-		return 1;
-	}
-	else if (n != 0) {
-		fprintf(stderr, "\nUnexpected situation: connection is not closed\n");
-		return 1;
-	}
-	fprintf(stderr, "\nThe TCP connection was closed by the other side\n");
-	return 0;
-}
-
 void updateServer(int orderNum) {
 	CURL *curl;
 	CURLcode res;
@@ -273,7 +158,6 @@ void updateServer(int orderNum) {
     /* For HTTPS */
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
 
-	curl_easy_setopt(curl, CURLOPT_NOBODY, 1);
     /* Perform the request, res will get the return code */
     res = curl_easy_perform(curl);
 	
@@ -320,6 +204,7 @@ int main() {
 	char* qmark;
 	char* isAdmin;
 	char* isOrder;
+	int check = 0;
 	//char* webcam = "raspistill -t 1 -w 400 -h 300 -o /home/pi/qrcode/image.jpg";
 	char* zbar = "zbarimg -q /home/pi/qrcode/image.jpg > /home/pi/qrcode/input.txt";
 
@@ -331,9 +216,9 @@ int main() {
 	}
 	
 	//raspistillProcessId = getProcByName("raspistill");
-	printf("ProcId:\t%i\n",raspistillProcessId);
-	printf("How many lockers are attached?\n");
-	scanf("%d", &numLockers);
+	printf("ProcId:\t%i\n", raspistillProcessId);
+	
+	numLockers = 4;
 
 	
 	//initialize lockerList
@@ -345,7 +230,7 @@ int main() {
 	
 
 	//make sure the pins on the Pi are ready for use
-	//initializePins();
+	initialize(lockerList, numLockers);
 
 	while (1) {
 		//must malloc new string to erase old one
@@ -353,8 +238,11 @@ int main() {
 
 		//take a picture and attempt to decode a QR image
 		system("date");
-		kill(raspistillProcessId, SIGUSR1);
-		//sleep(1);
+		if (raspistillProcessId != -1) kill(raspistillProcessId, SIGUSR1);
+		if (check == 1) {
+			check = 0;
+			sleep(3);
+		}
 		system(zbar);
 
 		//read the string from the text file
@@ -365,6 +253,7 @@ int main() {
 		//if zbar detected a QR code, the line "QR-Code:" followed by the decoded string
 		//would be in the text file
 		if (strstr(QRstring, "QR-Code:") != NULL) {
+			check = 1;
 			//check for ADMIN code
 			isAdmin = strstr(QRstring, "ADMIN");
 			//check for ORDER code
@@ -409,7 +298,6 @@ int main() {
 		}
 
 		//clean-up
-		//free(QRstring);
 		fclose(file);
 
 		//check for new open lockers
