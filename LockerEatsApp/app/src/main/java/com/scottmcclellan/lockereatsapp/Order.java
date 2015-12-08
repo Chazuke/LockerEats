@@ -1,6 +1,7 @@
 package com.scottmcclellan.lockereatsapp;
 
 import java.util.ArrayList;
+import java.util.Date;
 
 /**
  * Created by Scott on 10/8/2015.
@@ -14,6 +15,16 @@ public class Order {
     int orderId;
     String GcmRegistrationId;
     ArrayList<Product> items = new ArrayList<>();
+
+    public Date getSubmittedTime() {
+        return submittedTime;
+    }
+
+    public void setSubmittedTime(Date submittedTime) {
+        this.submittedTime = submittedTime;
+    }
+
+    Date submittedTime;
     int index = 0;
 
     public int getOrderId() {
@@ -68,5 +79,8 @@ public class Order {
         return;
     }
 
-
+    @Override
+    public String toString() {
+        return orderId + " (" + submittedTime.toString() + ")";
+    }
 }

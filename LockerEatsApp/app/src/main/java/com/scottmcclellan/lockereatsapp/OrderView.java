@@ -1,9 +1,12 @@
 package com.scottmcclellan.lockereatsapp;
 
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
@@ -23,29 +26,26 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.Calendar;
+import java.util.HashSet;
+import java.util.Set;
 
 public class OrderView extends AppCompatActivity {
 
     TextView txtResult;
     ImageView imgViewQrCode;
     protected JSONObject data;
+    SharedPreferences mPreferences;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        mPreferences = getSharedPreferences("LockerEats", Context.MODE_PRIVATE);
         setContentView(R.layout.activity_order_view);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         (new OrderDownloader()).execute();
 
-        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
-        fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
-            }
-        });
         txtResult = (TextView) findViewById(R.id.txtOrder);
         imgViewQrCode = (ImageView) findViewById(R.id.imgViewQrCode);
     }
@@ -58,8 +58,6 @@ public class OrderView extends AppCompatActivity {
                 URL url = new URL("http://agglo.mooo.com:3000/api/v1/orders/" + MainActivity.order.getOrderId());
                 HttpURLConnection connection =
                         (HttpURLConnection) url.openConnection();
-
-                //connection.addRequestProperty("x-api-key", context.getString(R.string.open_weather_maps_app_id));
 
                 BufferedReader reader = new BufferedReader(
                         new InputStreamReader(connection.getInputStream()));
@@ -98,6 +96,32 @@ public class OrderView extends AppCompatActivity {
             } catch (JSONException e) {
                 e.printStackTrace();
             }
+            Set<String> set = mPreferences.getStringSet("previousOrders", new HashSet<String>());
+            boolean found = false;
+            for (String js : set) {
+                try {
+                    if ((new JSONObject(js.toString())).getInt("id") == MainActivity.order.getOrderId()) {
+                        found = true;
+                    }
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            }
+            if(!found) {
+                JSONObject order = new JSONObject();
+                try {
+                    order.put("id", MainActivity.order.getOrderId());
+                    order.put("date", Calendar.getInstance().getTime().toString());
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+                set.add(order.toString());
+                SharedPreferences.Editor edit = mPreferences.edit();
+                edit.clear();
+                edit.putStringSet("previousOrders", set);
+                edit.commit();
+            }
+
             //ListView myList = (ListView) findViewById(android.R.id.list);
             //myList.setAdapter(myAdapter);
         }

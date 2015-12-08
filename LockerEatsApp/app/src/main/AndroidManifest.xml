@@ -18,7 +18,7 @@
 
     <application
         android:allowBackup="true"
-        android:icon="@mipmap/logo"
+        android:icon="@mipmap/ic_launcher"
         android:label="Locker Eats"
         android:theme="@style/AppTheme" >
         <meta-data
@@ -85,6 +85,8 @@
             android:name=".OrderView"
             android:label="@string/title_activity_order_view"
             android:theme="@style/AppTheme.NoActionBar" >
+        </activity>
+        <activity android:name=".PrevOrders" >
         </activity>
     </application>
 

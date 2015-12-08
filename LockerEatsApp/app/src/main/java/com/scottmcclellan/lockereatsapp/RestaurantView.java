@@ -15,7 +15,7 @@ import android.widget.TextView;
 
 public class RestaurantView extends ListActivity {
 
-    String[] restaurantList = {"Restaurant A", "Restaurant B", "Restaurant C", "Restaurant D"};
+    String[] restaurantList = {"Restaurant A", "View previous orders"};
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -35,16 +35,9 @@ public class RestaurantView extends ListActivity {
             startActivity(new Intent(this, com.scottmcclellan.lockereatsapp.MenuView.class));
         }
         else if (position == 1) {
-            MainActivity.order.setRestaurant(restaurantList[position]);
-            startActivity(new Intent(this, com.scottmcclellan.lockereatsapp.MenuView.class));
-        }
-        else if (position == 2) {
-            MainActivity.order.setRestaurant(restaurantList[position]);
-            startActivity(new Intent(this, com.scottmcclellan.lockereatsapp.MenuView.class));
-        }
-        else if (position == 3) {
-            MainActivity.order.setRestaurant(restaurantList[position]);
-            startActivity(new Intent(this, com.scottmcclellan.lockereatsapp.MenuView.class));
+
+            //MainActivity.order.setRestaurant(restaurantList[position]);
+            startActivity(new Intent(this, PrevOrders.class));
         }
     }
 
