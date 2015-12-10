@@ -15,7 +15,7 @@ import android.widget.TextView;
 
 public class RestaurantView extends ListActivity {
 
-    String[] restaurantList = {"Restaurant A", "View previous orders"};
+    String[] restaurantList = {"Von's Dough Shack", "View previous orders"};
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
